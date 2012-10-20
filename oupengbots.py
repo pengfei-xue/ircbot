@@ -4,7 +4,7 @@ from irc import IRCBot, run_bot, SimpleSerialize
 from addons import weather
 
 
-class GreeterBot(IRCBot):
+class OupengBot(IRCBot):
     def greet(self, nick, message, channel):
         return 'Hi, %s' % nick
 
@@ -31,7 +31,7 @@ class GreeterBot(IRCBot):
 
 host = 'irc.freenode.net'
 port = 6667
-nick = 'oupeng-bots'
+nick = 'oupeng-bot'
 channel = '#oupeng-fe'
 
-run_bot(GreeterBot, host, port, nick, [channel])
+run_bot(OupengBot, host, port, nick, [channel])
