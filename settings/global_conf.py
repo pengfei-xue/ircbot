@@ -1,5 +1,5 @@
 irc = {
-    'host': 'irc.freenode.net',
+    'server': 'irc.freenode.net',
     'port': 6667,
     'channel': '',
     'nickname': '',
