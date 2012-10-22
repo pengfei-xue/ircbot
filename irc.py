@@ -294,7 +294,7 @@ class IRCBot(object):
         )
     
     def capabilities(self):
-        pass
+        raise NotImplementedError
     
     def command_patterns(self):
         """
