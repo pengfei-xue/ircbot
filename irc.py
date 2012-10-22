@@ -3,7 +3,6 @@ import os
 import random
 import re
 import sys
-import time
 
 try:
     from gevent import socket
