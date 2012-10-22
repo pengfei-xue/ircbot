@@ -2,6 +2,7 @@
 
 from irc import IRCBot, run_bot, SimpleSerialize
 from addons import weather
+from settings import global_conf as g
 
 
 class OupengBot(IRCBot):
@@ -29,9 +30,6 @@ class OupengBot(IRCBot):
             self.ping('^weather', self.get_weather_chaoyang),
         )
 
-host = 'irc.freenode.net'
-port = 6667
-nick = 'oupeng-bot'
-channel = '#oupeng-fe'
+server, port, nick, channel = (g.irc[value] for value in ['server', 'port', 'nickname', 'channel'])
 
-run_bot(OupengBot, host, port, nick, [channel])
+run_bot(OupengBot, server, port, nick, [channel])
