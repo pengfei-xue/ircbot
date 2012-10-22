@@ -10,6 +10,7 @@ def raiseExceptionOn401(func):
         return res
     return wrapper
 
+
 class UnauthorizeException(BaseException):
     ''' 
         If no, or an invalid, private_token is provided then an 
@@ -17,6 +18,7 @@ class UnauthorizeException(BaseException):
         {"message":"401 Unauthorized"} 
     '''
     pass
+
 
 class GitLabApi(object):
     def __init__(self, api_baseurl, private_token):

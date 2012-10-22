@@ -30,6 +30,7 @@ class OupengBot(IRCBot):
             self.ping('^weather', self.get_weather_chaoyang),
         )
 
-server, port, nick, channel = (g.irc[value] for value in ['server', 'port', 'nickname', 'channel'])
+server, port, nick, channel = (g.irc[value] \
+    for value in ['server', 'port', 'nickname', 'channel'])
 
 run_bot(OupengBot, server, port, nick, [channel])
