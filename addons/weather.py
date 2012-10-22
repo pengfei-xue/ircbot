@@ -4,6 +4,10 @@
 import json
 import httplib2
 
+class InvalidCityCodeException(Exception):
+    ''' invalid city code exception '''
+
+
 class CityCode(object):
     valid_code = {
         101010300: 1, #朝阳
@@ -12,22 +16,22 @@ class CityCode(object):
     def __init__(self, city_code):
         self.city_code = city_code
 
+        # make sure city code is valid when creating CityCode
+        if not self.is_city_code_valid():
+            raise InvalidCityCodeException('City code is invalid')
+
     def is_city_code_valid(self):
         if self.valid_code.get(self.city_code, 0):
             return True
 
-    # make sure your city code is ok
+    # we can make sure that city code is valid
     def get_url(self):
-        if self.is_city_code_valid():
-            return "http://www.weather.com.cn/data/sk/%s.html" % self.city_code
+        return "http://www.weather.com.cn/data/sk/%s.html" % self.city_code
+
 
 # get current weather info by city code
 def get_weather_json(city_code):
     vcd = CityCode(city_code)
-
-    if not vcd.is_city_code_valid():
-        print "seem you feed me an invlid place, Mars?"
-        return False
 
     httpAgent =  httplib2.Http()
     url = vcd.get_url()
