@@ -21,10 +21,15 @@ class UnauthorizeException(BaseException):
 
 
 class GitLabApi(object):
+    '''
+        api wrapper for gitlab:
+        https://github.com/gitlabhq/gitlabhq/tree/master/doc/api
+    '''
     def __init__(self, api_baseurl, private_token):
         self.private_token = private_token
         self.api_baseurl = api_baseurl
     
+    # NOTE: project apis #
     def get_projects(self):
         '''
             Get a list of projects owned by the authenticated user.
@@ -51,6 +56,66 @@ class GitLabApi(object):
         '''
         res = self.call('projects/%s/members' % id)
 
+    # NOTE : repository apis #
+    def get_project_branches(self, id):
+        '''
+            Get a list of repository branches from a project, 
+            sorted by name alphabetically.
+            api: GET /projects/:id/repository/branches
+            parameters: id (required) - The ID or code name of a project
+        '''
+        res = self.call('projects/%s/repository/branches' % id)
+        return res
+
+    def get_project_single_branch(self, id, branch):
+        '''
+            Get a single project repository branch.
+            api: GET /projects/:id/repository/branches/:branch
+            parameters: 
+                id (required) - The ID or code name of a project
+                branch (required) - The name of the branch
+        '''
+        res = self.call('projects/%s/repository/branches/%s' % (id, branch))
+        return res
+
+    def get_project_tags(self, id):
+        '''
+            Get a list of repository tags from a project, 
+            sorted by name in reverse alphabetical order.
+            api: GET /projects/:id/repository/tags
+            parameters: id (required) - The ID or code name of a project
+        '''
+        res = self.call('projects/%s/repository/tags' % id)
+        return res
+
+    def get_project_commits(self, id, ref_name):
+        '''
+            Get a list of repository commits in a project.
+            api: GET /projects/:id/repository/commits
+            parameters: 
+                id (required) - The ID or code name of a project
+                ref_name (optional) - The name of a repository branch or tag
+        '''
+        # TODO : this api is not implemented at our gitlab
+        pass
+        res = self.call('projects/%s/repository/commits' % id)
+        return res
+
+    def get_raw_blob_content(self, id, sha, filepath):
+        '''
+            Get the raw file contents for a file. 
+            api: GET /projects/:id/repository/commits/:sha/blob
+            parameters:
+                id (required) - The ID or code name of a project
+                sha (required) - The commit or branch name
+                filepath (required) - The path the file
+        '''
+        pass
+        # TODO :  this api usage should be reviewed later
+        res = self.call('projects/%s/repository/commits/%s/blob' % (id, sha))
+        return res
+
+    # NOTE : users related apis #
     def about_me(self):
         '''       
             Get currently authenticated user. 

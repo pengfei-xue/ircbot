@@ -1,11 +1,17 @@
 # -*- coding: utf8 -*-
 
 from irc import IRCBot, run_bot, SimpleSerialize
-from addons import weather
 from settings import global_conf as g
+from addons import weather
+from addons import gitlab
 
 
 class OupengBot(IRCBot):
+    def __init__(self, conn):
+        super(OupengBot, self).__init__(conn)
+        self.gitlab_api = gitlab.GitLabApi(g.gitlab['api_baseurl'], \
+            g.gitlab['private_token'])
+
     def greet(self, nick, message, channel):
         return 'Hi, %s' % nick
 
@@ -31,12 +37,23 @@ class OupengBot(IRCBot):
         res.append('**** End of help ****')
 
         return res
+
+    def get_gitlab_projects(self, nick, message, channel):
+        res = []
+
+        projects = self.gitlab_api.get_projects()
+        for proj in projects.json:
+            res.append('project name: ' + proj['name'])
+            res.append('owner email: ' + proj['owner']['email'])
+
+        return res
     
     def command_patterns(self):
         return (
             self.ping('^hello', self.greet),
             self.ping('^weather', self.get_weather_chaoyang),
             self.ping('^help', self.help),
+            self.ping('^git projects', self.get_gitlab_projects),
         )
 
 server, port, nick, channel = (g.irc[value] \
