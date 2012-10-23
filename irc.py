@@ -4,10 +4,7 @@ import random
 import re
 import sys
 
-try:
-    from gevent import socket
-except ImportError:
-    import socket
+from gevent import socket
 
 from logging.handlers import RotatingFileHandler
 from optparse import OptionParser
