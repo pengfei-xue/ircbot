@@ -213,7 +213,11 @@ class IRCConnection(object):
         for pattern, callback in self._callbacks:
             match = pattern.match(message) or pattern.match('/privmsg')
             if match:
-                results.append(callback(nick, message, channel, **match.groupdict()))
+                res = callback(nick, message, channel, **match.groupdict())
+                if isinstance(res, list):
+                    results.extend(res)
+                else:
+                    results.append(res)
         
         return results
     
@@ -261,7 +265,10 @@ class IRCBot(object):
     """
     def __init__(self, conn):
         self.conn = conn
-        
+
+        # for help info
+        self.capabilities = []
+
         # register callbacks with the connection
         self.register_callbacks()
     
@@ -269,10 +276,9 @@ class IRCBot(object):
         """
         Hook for registering callbacks with connection -- handled by __init__()
         """
-        self.conn.register_callbacks((
-            (re.compile(pattern), callback) \
-                for pattern, callback in self.command_patterns()
-        ))
+        for pattern, callback in self.command_patterns():
+            self.conn.register_callbacks([(re.compile(pattern), callback), ])
+            self.capabilities.append(re.sub('.*(\*+)', '', pattern))
     
     def _ping_decorator(self, func):
         def inner(nick, message, channel, **kwargs):
@@ -292,8 +298,8 @@ class IRCBot(object):
             self._ping_decorator(callback),
         )
     
-    def capabilities(self):
-        raise NotImplementedError
+    def get_capabilities(self):
+        return self.capabilities
     
     def command_patterns(self):
         """

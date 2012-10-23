@@ -23,11 +23,20 @@ class OupengBot(IRCBot):
         msg = ' '.join("%s: %s" % info for info in weather_info)
 
         return msg
+
+    def help(self, nick, message, channel):
+        res = []
+        res.append('**** avaliable commands ****')
+        res.extend(self.get_capabilities())
+        res.append('**** End of help ****')
+
+        return res
     
     def command_patterns(self):
         return (
             self.ping('^hello', self.greet),
             self.ping('^weather', self.get_weather_chaoyang),
+            self.ping('^help', self.help),
         )
 
 server, port, nick, channel = (g.irc[value] \
