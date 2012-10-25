@@ -1,5 +1,9 @@
 # -*- coding: utf8 -*-
 
+# patches stdlib (including socket and ssl modules) 
+# to cooperate with other greenlets
+from gevent import monkey; monkey.patch_all()
+
 from irc import IRCBot, run_bot, SimpleSerialize
 from settings import global_conf as g
 from addons import weather
