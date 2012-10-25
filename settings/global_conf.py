@@ -1,3 +1,5 @@
+debug = True
+
 irc = {
     'server': 'irc.freenode.net',
     'port': 6667,

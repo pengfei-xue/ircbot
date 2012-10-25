@@ -5,10 +5,10 @@ import re
 import sys
 
 from gevent import socket
-
 from logging.handlers import RotatingFileHandler
 from optparse import OptionParser
 
+from settings import global_conf as g
 
 class IRCConnection(object):
     """
@@ -239,6 +239,10 @@ class IRCConnection(object):
         while 1:
             try:
                 data = self._sock_file.readline()
+                if g.debug:
+                    print 'Get data from irc server'
+                    print data
+                    print ' ****  END **** '
             except socket.error:
                 data = None
             
