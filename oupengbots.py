@@ -1,11 +1,7 @@
 # -*- coding: utf8 -*-
 
-# patches stdlib (including socket and ssl modules) 
-# to cooperate with other greenlets
-from gevent import monkey; monkey.patch_all()
-
 from irc import IRCBot, run_bot, SimpleSerialize
-from settings import global_conf as g
+from settings import global_conf as gc
 from addons import weather
 from addons import gitlab
 
@@ -13,8 +9,8 @@ from addons import gitlab
 class OupengBot(IRCBot):
     def __init__(self, conn):
         super(OupengBot, self).__init__(conn)
-        self.gitlab_api = gitlab.GitLabApi(g.gitlab['api_baseurl'], \
-            g.gitlab['private_token'])
+        self.gitlab_api = gitlab.GitLabApi(gc.gitlab['api_baseurl'], \
+            gc.gitlab['private_token'])
 
     def greet(self, nick, message, channel):
         return 'Hi, %s' % nick
@@ -60,7 +56,7 @@ class OupengBot(IRCBot):
             self.ping('^git projects', self.get_gitlab_projects),
         )
 
-server, port, nick, channel = (g.irc[value] \
+server, port, nick, channel = (gc.irc[value] \
     for value in ['server', 'port', 'nickname', 'channel'])
 
 run_bot(OupengBot, server, port, nick, [channel])
