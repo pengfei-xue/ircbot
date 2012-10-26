@@ -8,7 +8,8 @@ from gevent import socket
 from logging.handlers import RotatingFileHandler
 from optparse import OptionParser
 
-from settings import global_conf as g
+from settings import global_conf as gc
+
 
 class IRCConnection(object):
     """
@@ -221,7 +222,8 @@ class IRCConnection(object):
     def handle_channel_message(self, nick, channel, message):
         for result in self._process_command(nick, message, channel):
             if result:
-                self.respond(result, channel=channel)
+                #self.respond(result, channel=channel)
+                self.respond(result, nick=nick)
     
     def handle_private_message(self, nick, message):
         for result in self._process_command(nick, message, None):
@@ -239,7 +241,7 @@ class IRCConnection(object):
         while 1:
             try:
                 data = self._sock_file.readline()
-                if g.debug:
+                if gc.debug:
                     print 'Get data from irc server'
                     print data
                     print ' ****  END **** '
