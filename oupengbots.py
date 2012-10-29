@@ -28,12 +28,12 @@ class OupengBot(IRCBot):
         return res
 
     def get_gitlab_projects(self, nick, message, channel):
-        res = []
+        msg = None
 
         projects = self.gitlab_api.get_projects()
         for proj in projects.json:
-            res.append('project name: ' + proj['name'])
-            res.append('owner email: ' + proj['owner']['email'])
+            msg = 'project name: %s, id: %s, owner: %s' % (proj['name'], \
+                proj['id'], proj['owner']['name'])
 
         return res
     

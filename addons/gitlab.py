@@ -96,8 +96,6 @@ class GitLabApi(object):
                 id (required) - The ID or code name of a project
                 ref_name (optional) - The name of a repository branch or tag
         '''
-        # TODO : this api is not implemented at our gitlab
-        pass
         res = self.call('projects/%s/repository/commits' % id)
         return res
 
@@ -110,8 +108,6 @@ class GitLabApi(object):
                 sha (required) - The commit or branch name
                 filepath (required) - The path the file
         '''
-        pass
-        # TODO :  this api usage should be reviewed later
         res = self.call('projects/%s/repository/commits/%s/blob' % (id, sha))
         return res
 
