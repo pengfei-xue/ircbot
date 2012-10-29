@@ -35,7 +35,7 @@ class OupengBot(IRCBot):
             msg = 'project name: %s, id: %s, owner: %s' % (proj['name'], \
                 proj['id'], proj['owner']['name'])
 
-        return res
+        return msg
     
     def command_patterns(self):
         return (
