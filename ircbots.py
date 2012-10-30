@@ -9,6 +9,7 @@ from logging.handlers import RotatingFileHandler
 
 import gevent
 from gevent import socket
+from gevent.pool import Pool
 
 
 class IRCBot(object):
@@ -39,6 +40,9 @@ class IRCBot(object):
 
         # for help info
         self.capabilities = []
+
+        # gevent pool
+        self.gpool = Pool(10)
 
     def get_logger(self, logger_name, filename):
         log = logging.getLogger(logger_name)
@@ -104,7 +108,7 @@ class IRCBot(object):
                 return True
             
             message = message.rstrip()
-            self.handle(message)
+            self.gpool.spawn(self.handle, message).join()
 
     def handle(self, msg):
         patterns = self.dispatch_patterns()
