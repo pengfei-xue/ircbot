@@ -1,15 +1,18 @@
 # -*- coding: utf8 -*-
 
 import sys
-import logging
 import random
 import re
-
-from logging.handlers import RotatingFileHandler
 
 import gevent
 from gevent import socket
 from gevent.pool import Pool
+
+from tools import get_logger
+
+
+class IRCBadMessage(BaseException):
+    pass
 
 
 class IRCBot(object):
@@ -22,21 +25,12 @@ class IRCBot(object):
     join_re = re.compile(':(?P<nick>.*?)!\S+\s+?JOIN\s+:\s*(?P<channel>#+[-\w]+)')
     quit_re = re.compile(':(?P<nick>.*?)!\S+\s+?QUIT\s+.*')
 
-    # mapping for logging verbosity
-    verbosity_map = {
-        0: logging.ERROR,
-        1: logging.INFO,
-        2: logging.DEBUG,
-    }
-
-    def __init__(self, nick, logfile=None, verbosity=1):
+    def __init__(self, nick, logfile=None, verbosity='INFO'):
         self.nick = self.base_nick = nick
 
         self._callbacks = []
 
-        self.logfile = logfile
-        self.verbosity = verbosity
-        self.logger = self.get_logger('ircconnection.logger', self.logfile)
+        self.logger = get_logger('ircconnection.logger', logfile, verbosity)
 
         # for help info
         self.capabilities = []
@@ -44,21 +38,41 @@ class IRCBot(object):
         # gevent pool
         self.gpool = Pool(10)
 
-    def get_logger(self, logger_name, filename):
-        log = logging.getLogger(logger_name)
-        log.setLevel(self.verbosity_map.get(self.verbosity, logging.INFO))
-        
-        if self.logfile:
-            handler = RotatingFileHandler(filename, maxBytes=1024*1024, backupCount=2)
-            handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-            log.addHandler(handler)
-        
-        if self.verbosity == 2 or not self.logfile:
-            stream_handler = logging.StreamHandler()
-            stream_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-            log.addHandler(stream_handler)
-        
-        return log
+    def parsemsg(self, msg):
+        """
+            Breaks a message from an IRC server into its prefix, command, and arguments.
+        """
+        prefix = ''
+        trailing = []
+
+        '''
+            according to rfc2812, the message format is:
+            :<prefix> <command> <params> :<trailing>
+
+            here are some examples:
+            :CalebDelnay!calebd@localhost PRIVMSG #mychannel :Hello everyone!
+            :CalebDelnay!calebd@localhost QUIT :Bye bye!
+            :CalebDelnay!calebd@localhost JOIN #mychannel
+            :CalebDelnay!calebd@localhost MODE #mychannel -l
+            PING :irc.localhost.localdomain
+        '''
+        if not msg:
+            raise IRCBadMessage("Empty line.")
+
+        if msg[0] == ':':
+            prefix, msg = msg[1:].split(' ', 1)
+
+        if msg.find(' :') != -1:
+            msg, trailing = msg.split(' :', 1)
+            args = msg.split()
+            args.append(trailing)
+
+        else:
+            args = msg.split()
+
+        command = args.pop(0)
+
+        return prefix, command, args
 
     def connect_ircserver(self, server, port):
         self.server = server
@@ -108,7 +122,7 @@ class IRCBot(object):
                 return True
             
             message = message.rstrip()
-            self.gpool.spawn(self.handle, message).join()
+            self.gpool.spawn(self.handle, message)
 
     def handle(self, msg):
         patterns = self.dispatch_patterns()
