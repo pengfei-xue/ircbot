@@ -74,6 +74,27 @@ class IRCBot(object):
 
         return prefix, command, args
 
+    def _handleMsg(self, prefix, command, params):
+        """
+            Determine the function to call for the given command and call it with
+            the given arguments.
+        """
+        method = getattr(self, "irc_%s" % command.upper(), None)
+        try:
+            if method is not None:
+                method(prefix, params)
+            else:
+                self.irc_unknown(prefix, command, params)
+        except:
+            self.logger.error('Method %s not defined' % method)
+
+    def irc_unknown(self, prefix, command, params):
+        """
+        Called by L{handleCommand} on a command that doesn't have a defined
+        handler. Subclasses should override this method.
+        """
+        raise NotImplementedError(command, prefix, params)
+
     def connect_ircserver(self, server, port):
         self.server = server
         self.port = port
@@ -96,7 +117,8 @@ class IRCBot(object):
     def send(self, msg):
         if not msg.endswith('\r\n'):
             msg += '\r\n'
-            
+        
+        self.logger.info(msg)     
         self._sock_file.write(msg)
         self._sock_file.flush()
 
@@ -125,13 +147,9 @@ class IRCBot(object):
             self.gpool.spawn(self.handle, message)
 
     def handle(self, msg):
-        patterns = self.dispatch_patterns()
         self.logger.info('Handle %s' % msg)
-
-        for pattern, callback in patterns:
-            match = pattern.match(msg)
-            if match:
-                callback(**match.groupdict())
+        prefix, command, params = self.parsemsg(msg)
+        self._handleMsg(prefix, command, params)
 
     def register_nick(self):
         self.logger.info('Registering nick %s' % self.nick)
@@ -204,12 +222,20 @@ class IRCBot(object):
             if pattern.match('/nick'):
                 callback(old_nick, '/nick', new_nick)
 
-    def handle_ping(self, payload):
+    def irc_PING(self, prefix, params):
         """
-        Respond to periodic PING messages from server
+            NOTE: ONLY response to periodic PING messages from server 
+
+            If there is no prefix, then the source of the 
+            message is the server for the current connection, 
+            as in this PING method
         """
-        self.logger.info('server ping: %s' % payload)
-        self.send('PONG %s' % payload)
+        assert prefix == '', 'where is this PING message from?'
+        log_text = 'ping: prefix=>[%s], params=>[%s]'
+        self.logger.info(log_text % (prefix, ' '.join(params)))
+
+        # ping message from server
+        self.send('PONG :%s' % params[0])
 
     def handle_part(self, nick, channel):
         for pattern, callback in self._callbacks:
