@@ -16,24 +16,14 @@ class IRCBadMessage(BaseException):
 
 
 class IRCBot(object):
-    nick_re = re.compile('.*?Nickname is already in use')
-    nick_change_re = re.compile(':(?P<old_nick>.*?)!\S+\s+?NICK\s+:\s*(?P<new_nick>[-\w]+)')
-    ping_re = re.compile('^PING (?P<payload>.*)')
-    chanmsg_re = re.compile(':(?P<nick>.*?)!\S+\s+?PRIVMSG\s+(?P<channel>#+[-\w]+)\s+:(?P<message>[^\n\r]+)')
-    privmsg_re = re.compile(':(?P<nick>.*?)!~\S+\s+?PRIVMSG\s+[^#][^:]+:(?P<message>[^\n\r]+)')
-    part_re = re.compile(':(?P<nick>.*?)!\S+\s+?PART\s+(?P<channel>#+[-\w]+)')
-    join_re = re.compile(':(?P<nick>.*?)!\S+\s+?JOIN\s+:\s*(?P<channel>#+[-\w]+)')
-    quit_re = re.compile(':(?P<nick>.*?)!\S+\s+?QUIT\s+.*')
+    digit_cmd_map = {
+        '433': 'nickinuse',
+    }
 
     def __init__(self, nick, logfile=None, verbosity='INFO'):
         self.nick = self.base_nick = nick
 
-        self._callbacks = []
-
         self.logger = get_logger('ircconnection.logger', logfile, verbosity)
-
-        # for help info
-        self.capabilities = []
 
         # gevent pool
         self.gpool = Pool(10)
@@ -71,7 +61,7 @@ class IRCBot(object):
             args = msg.split()
 
         command = args.pop(0)
-
+        
         return prefix, command, args
 
     def _handleMsg(self, prefix, command, params):
@@ -79,7 +69,14 @@ class IRCBot(object):
             Determine the function to call for the given command and call it with
             the given arguments.
         """
+        if command.isdigit():
+            command = self.convert_digit_cmd(command)
+
+        # we could get nothing if the command is digits format as 433
+        # if we get the digits command those we don't know how to handle
+        # it, using irc_IGNORECMD instead
         method = getattr(self, "irc_%s" % command.upper(), None)
+
         try:
             if method is not None:
                 method(prefix, params)
@@ -87,6 +84,18 @@ class IRCBot(object):
                 self.irc_unknown(prefix, command, params)
         except:
             self.logger.error('Method %s not defined' % method)
+        
+    def convert_digit_cmd(self, cmd):
+        real_cmd_name = self.digit_cmd_map.get(cmd, 'ignorecmd')
+        return real_cmd_name.upper()
+
+    def irc_NICKINUSE(self, prefix, params):
+        ''' 
+            handle message like this:
+            :wright.freenode.net 433 * oupeng-bot :Nickname is already in use.
+        '''
+        # seems there is already a oupeng-bot running now
+        self.disconnect_ircserver()
 
     def irc_unknown(self, prefix, command, params):
         """
@@ -94,6 +103,9 @@ class IRCBot(object):
         handler. Subclasses should override this method.
         """
         raise NotImplementedError(command, prefix, params)
+
+    def irc_IGNORECMD(self, prefix, command, params):
+        self.logger.info('command %s ignored' % command)
 
     def connect_ircserver(self, server, port):
         self.server = server
@@ -112,6 +124,7 @@ class IRCBot(object):
         self.register()
 
     def disconnect_ircserver(self):
+        self.gpool.kill()
         self._socket.close()
 
     def send(self, msg):
@@ -125,6 +138,7 @@ class IRCBot(object):
     def join_channel(self, channel):
         if not channel.startswith('#'):
             channel = '#%s' % channel
+            self.channel = channel
         
         self.logger.debug('joining %s' % channel)
         self.send('JOIN %s' % channel)
@@ -159,69 +173,6 @@ class IRCBot(object):
         self.logger.info('Authing as %s' % self.nick)
         self.send('USER %s %s bla :%s' % (self.nick, self.server, self.nick))
 
-    def part(self, channel):
-        if not channel.startswith('#'):
-            channel = '#%s' % channel
-        self.send('PART %s' % channel)
-        self.logger.debug('leaving %s' % channel)
-
-    def respond(self, message, channel=None, nick=None):
-        """
-        Multipurpose method for sending responses to channel or via message to
-        a single user
-        """
-        if channel:
-            if not channel.startswith('#'):
-                channel = '#%s' % channel
-            self.send('PRIVMSG %s :%s' % (channel, message))
-        elif nick:
-            self.send('PRIVMSG %s :%s' % (nick, message))
-    
-    def dispatch_patterns(self):
-        """
-        Low-level dispatching of socket data based on regex matching, in general
-        handles
-        
-        * In event a nickname is taken, registers under a different one
-        * Responds to periodic PING messages from server
-        * Dispatches to registered callbacks when
-            - any user leaves or enters a room currently connected to
-            - a channel message is observed
-            - a private message is received
-        """
-        return (
-            (self.nick_re, self.new_nick),
-            (self.nick_change_re, self.handle_nick_change),
-            (self.ping_re, self.handle_ping),
-            (self.part_re, self.handle_part),
-            (self.join_re, self.handle_join),
-            (self.quit_re, self.handle_quit),
-            (self.chanmsg_re, self.handle_channel_message),
-            (self.privmsg_re, self.handle_private_message),
-        )
-    
-    def register_callbacks(self, callbacks):
-        """
-        Hook for registering custom callbacks for dispatch patterns
-        """
-        self._callbacks.extend(callbacks)
-    
-    def new_nick(self):
-        """
-        Generates a new nickname based on original nickname followed by a
-        random number
-        """
-        old = self.nick
-        self.nick = '%s_%s' % (self.base_nick, random.randint(1, 1000))
-        self.logger.warn('Nick %s already taken, trying %s' % (old, self.nick))
-        self.register_nick()
-        self.handle_nick_change(old, self.nick)
-
-    def handle_nick_change(self, old_nick, new_nick):
-        for pattern, callback in self._callbacks:
-            if pattern.match('/nick'):
-                callback(old_nick, '/nick', new_nick)
-
     def irc_PING(self, prefix, params):
         """
             NOTE: ONLY response to periodic PING messages from server 
@@ -236,42 +187,3 @@ class IRCBot(object):
 
         # ping message from server
         self.send('PONG :%s' % params[0])
-
-    def handle_part(self, nick, channel):
-        for pattern, callback in self._callbacks:
-            if pattern.match('/part'):
-                callback(nick, '/part', channel)
-    
-    def handle_join(self, nick, channel):
-        for pattern, callback in self._callbacks:
-            if pattern.match('/join'):
-                callback(nick, '/join', channel)
-    
-    def handle_quit(self, nick):
-        for pattern, callback in self._callbacks:
-            if pattern.match('/quit'):
-                callback(nick, '/quit', None)
-    
-    def _process_command(self, nick, message, channel):
-        results = []
-        
-        for pattern, callback in self._callbacks:
-            match = pattern.match(message) or pattern.match('/privmsg')
-            if match:
-                res = callback(nick, message, channel, **match.groupdict())
-                if isinstance(res, list):
-                    results.extend(res)
-                else:
-                    results.append(res)
-        
-        return results
-    
-    def handle_channel_message(self, nick, channel, message):
-        for result in self._process_command(nick, message, channel):
-            if result:
-                self.respond(result, nick=nick)
-    
-    def handle_private_message(self, nick, message):
-        for result in self._process_command(nick, message, None):
-            if result:
-                self.respond(result, nick=nick)
