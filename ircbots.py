@@ -28,6 +28,8 @@ class IRCBot(object):
         # gevent pool
         self.gpool = Pool(10)
 
+        self._valid_orders = {}
+
     def parsemsg(self, msg):
         """
             Breaks a message from an IRC server into its prefix, command, and arguments.
@@ -82,8 +84,8 @@ class IRCBot(object):
                 method(prefix, params)
             else:
                 self.irc_unknown(prefix, command, params)
-        except:
-            self.logger.error('Method %s not defined' % method)
+        except BaseException as e:
+            self.logger.error('Exception: %s' % e)
         
     def convert_digit_cmd(self, cmd):
         real_cmd_name = self.digit_cmd_map.get(cmd, 'ignorecmd')
@@ -92,9 +94,9 @@ class IRCBot(object):
     def irc_NICKINUSE(self, prefix, params):
         ''' 
             handle message like this:
-            :wright.freenode.net 433 * oupeng-bot :Nickname is already in use.
+            :wright.freenode.net 433 * bot :Nickname is already in use.
         '''
-        # seems there is already a oupeng-bot running now
+        # seems there is already a bot running now
         self.disconnect_ircserver()
 
     def irc_unknown(self, prefix, command, params):
@@ -104,8 +106,8 @@ class IRCBot(object):
         """
         raise NotImplementedError(command, prefix, params)
 
-    def irc_IGNORECMD(self, prefix, command, params):
-        self.logger.info('command %s ignored' % command)
+    def irc_IGNORECMD(self, prefix, params):
+        self.logger.info('Request ignored')
 
     def connect_ircserver(self, server, port):
         self.server = server
@@ -163,6 +165,10 @@ class IRCBot(object):
     def handle(self, msg):
         self.logger.info('Handle %s' % msg)
         prefix, command, params = self.parsemsg(msg)
+
+        log_text = 'parsed message: cmd=>[%s] prefix=>[%s], params=>[%s]'
+        self.logger.info(log_text % (command, prefix, ' '.join(params)))
+
         self._handleMsg(prefix, command, params)
 
     def register_nick(self):
@@ -182,8 +188,68 @@ class IRCBot(object):
             as in this PING method
         """
         assert prefix == '', 'where is this PING message from?'
-        log_text = 'ping: prefix=>[%s], params=>[%s]'
-        self.logger.info(log_text % (prefix, ' '.join(params)))
 
         # ping message from server
         self.send('PONG :%s' % params[0])
+
+    def irc_PRIVMSG(self, prefix, params):
+        # handle msg like the following:
+        # :xpen!~xpen@10.0.0.1 PRIVMSG bot :git project
+        # :xpen!~xpen@10.0.0.1 PRIVMSG #channel :bot: hi
+        # ('xpen!~xpen@10.0.0.1', 'PRIVMSG', ['#channel', 'bot: hi'])
+        # NOTE: always send message as private msg to the person who emits this
+        # check this message is send to me
+        receiver, msg = params[-1].split(':', 1)
+        sender = prefix.split('!', 1)[0]
+
+        if receiver != self.nick:
+            self.logger.error('receiver is not me')
+            self.send('PRIVMSG %s :%s' % (sender, "Hey, I'm not your lover"))
+            return
+
+        self.serve(sender, msg.strip())
+
+    def register_order(self, order):
+        '''
+            order should be a dict, and the key is used as
+            we receive order from client: bot, do me a favor
+            {'do me a favor': 'handler'}
+            should support regexp as, maybe django urlpattern can
+            help me out
+            {'git project 11' : 'handler'}
+        '''
+        if not isinstance(order, dict):
+            # description : handler
+            raise Exception('dict required')
+            
+        if self._validate_order(order):
+            raise Exception('Order already defined')
+
+        _passed_orders = {}
+        for k, v in order.iteritems():
+            k, v = map(lambda x: x.stirp(), (k, v))
+
+            handler = getattr(self, v, None)
+            if handler and callable(handler):
+                _passed_orders.update({k:v})
+
+            else:
+                raise Exception('Your order seems invalid')
+
+        self._valid_orders.update(_passed_orders)
+
+    def _validate_order(self, order):
+        return order in self._valid_orders
+
+    # always send private msg to the person who asks for it even get this from channel
+    def serve(self, sender, order):
+        # only registered orders allowed
+        if not self._validate_order(order):
+            self.logger.error('Invalid order %s' % order)
+
+            for order in self._valid_orders:
+                self.send('PRIVMSG %s %s' % (sender, order))
+
+            return
+
+        self._valid_orders[order]()
