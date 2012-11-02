@@ -2,13 +2,21 @@
 
 import requests
 
-def raiseExceptionOn401(func):
+def raiseExceptionOn40X(func):
     def wrapper(*args, **kwargs):
         res = func(*args, **kwargs)
-        if not res.ok and res.status_code == 401:
-            raise UnauthorizeException('401 Unauthorized')
+        if not res.ok:
+            if res.status_code == 401:
+                raise UnauthorizeException('401 Unauthorized')
+            elif res.status_code == 404:
+                raise NotFoundException('404 Not Found')
         return res
     return wrapper
+
+
+class NotFoundException(BaseException):
+    ''' {"message":"404 Not Found"} '''
+    pass
 
 
 class UnauthorizeException(BaseException):
@@ -136,7 +144,7 @@ class GitLabApi(object):
         res = self.call('users/%s' % id)
         return res
 
-    @raiseExceptionOn401
+    @raiseExceptionOn40X
     def call(self, api_url, http_method='GET', **kwargs):
         res = None
         url = self.api_baseurl + api_url + '?private_token=' + self.private_token
