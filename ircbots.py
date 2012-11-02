@@ -260,7 +260,7 @@ class IRCBot(object):
 
             return
 
-        # ok, let do it
+        # ok, let's do it
         response = []
         for registered_handler in self._valid_orders:
             pattern, handler, help_text = registered_handler
