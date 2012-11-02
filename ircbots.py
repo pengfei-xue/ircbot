@@ -28,7 +28,7 @@ class IRCBot(object):
         # gevent pool
         self.gpool = Pool(10)
 
-        self._valid_orders = {}
+        self._valid_orders = []
 
     def parsemsg(self, msg):
         """
@@ -82,6 +82,7 @@ class IRCBot(object):
         try:
             if method is not None:
                 method(prefix, params)
+
             else:
                 self.irc_unknown(prefix, command, params)
         except BaseException as e:
@@ -211,45 +212,68 @@ class IRCBot(object):
 
     def register_order(self, order):
         '''
-            order should be a dict, and the key is used as
-            we receive order from client: bot, do me a favor
-            {'do me a favor': 'handler'}
-            should support regexp as, maybe django urlpattern can
-            help me out
-            {'git project 11' : 'handler'}
+            order should be a tuple, and values are: 
+            (re object, handler, help_txt)
         '''
-        if not isinstance(order, dict):
-            # description : handler
-            raise Exception('dict required')
+        if not isinstance(order, tuple):
+            raise Exception('tuple required')
             
         if self._validate_order(order):
             raise Exception('Order already defined')
 
-        _passed_orders = {}
-        for k, v in order.iteritems():
-            k, v = map(lambda x: x.stirp(), (k, v))
+        help_text = order[2]
+        if help_text == '' or help_text is None or \
+            not isinstance(help_text, str):
+            raise Exception('Help text required')
 
-            handler = getattr(self, v, None)
-            if handler and callable(handler):
-                _passed_orders.update({k:v})
+        handler = order[1]
+        if callable(handler):
+            self._valid_orders.append(order)
+            self.logger.info('successfully added handler')
 
-            else:
-                raise Exception('Your order seems invalid')
-
-        self._valid_orders.update(_passed_orders)
+        else:
+            raise Exception('Your order seems invalid')
 
     def _validate_order(self, order):
-        return order in self._valid_orders
+        res = [x[0] for x in self._valid_orders]
 
-    # always send private msg to the person who asks for it even get this from channel
+        is_valid = False
+        if isinstance(order, tuple):
+            is_valid = True if order[0] in res else False
+
+        if isinstance(order, str):
+            matched = filter(lambda x: x.match(order), res)
+            is_valid = matched != []
+
+        return is_valid
+
+    # always send private msg to the person who asks for 
+    # it even get this from channel
     def serve(self, sender, order):
+        self.logger.info('In: sender=>[%s],  order=>[%s]' %(sender, order))
         # only registered orders allowed
         if not self._validate_order(order):
             self.logger.error('Invalid order %s' % order)
 
             for order in self._valid_orders:
-                self.send('PRIVMSG %s %s' % (sender, order))
+                self.send('PRIVMSG %s :%s' % (sender, order[2]))
 
             return
 
-        self._valid_orders[order]()
+        # ok, let do it
+        response = []
+        for registered_handler in self._valid_orders:
+            pattern, handler, help_text = registered_handler
+
+            match = pattern.match(order)
+            if match:
+                result = handler(**match.groupdict())
+
+                if isinstance(result, list):
+                    response.extend(result)
+
+                else:
+                    response.append(result)
+
+        for result in response:
+            self.send('PRIVMSG %s :%s' % (sender, result))
