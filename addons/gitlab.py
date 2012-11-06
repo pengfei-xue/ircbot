@@ -46,36 +46,36 @@ class GitLabApi(object):
         res = self.call('projects')
         return res
 
-    def get_single_project(self, id):
+    def get_single_project(self, project_id):
         '''
             Get a specific project, identified by project ID, 
             which is owned by the authentication user.
             api: GET /projects/:id 
             parameters: id (required) - The ID or code name of a project
         '''
-        res = self.call('projects/%s' % id)
+        res = self.call('projects/%s' % project_id)
         return res
 
-    def get_project_members(self, id):
+    def get_project_members(self, project_id):
         '''
             Get a list of project team members.
             api: GET /projects/:id/members
             parameters: id (required) - The ID or code name of a project
         '''
-        res = self.call('projects/%s/members' % id)
+        res = self.call('projects/%s/members' % project_id)
 
     # NOTE : repository apis #
-    def get_project_branches(self, id):
+    def get_project_branches(self, project_id):
         '''
             Get a list of repository branches from a project, 
             sorted by name alphabetically.
             api: GET /projects/:id/repository/branches
             parameters: id (required) - The ID or code name of a project
         '''
-        res = self.call('projects/%s/repository/branches' % id)
+        res = self.call('projects/%s/repository/branches' % project_id)
         return res
 
-    def get_project_single_branch(self, id, branch):
+    def get_project_single_branch(self, project_id, branch):
         '''
             Get a single project repository branch.
             api: GET /projects/:id/repository/branches/:branch
@@ -83,20 +83,20 @@ class GitLabApi(object):
                 id (required) - The ID or code name of a project
                 branch (required) - The name of the branch
         '''
-        res = self.call('projects/%s/repository/branches/%s' % (id, branch))
+        res = self.call('projects/%s/repository/branches/%s' % (project_id, branch))
         return res
 
-    def get_project_tags(self, id):
+    def get_project_tags(self, project_id):
         '''
             Get a list of repository tags from a project, 
             sorted by name in reverse alphabetical order.
             api: GET /projects/:id/repository/tags
             parameters: id (required) - The ID or code name of a project
         '''
-        res = self.call('projects/%s/repository/tags' % id)
+        res = self.call('projects/%s/repository/tags' % project_id)
         return res
 
-    def get_project_commits(self, id, ref_name):
+    def get_project_commits(self, project_id, ref_name):
         '''
             Get a list of repository commits in a project.
             api: GET /projects/:id/repository/commits
@@ -104,10 +104,10 @@ class GitLabApi(object):
                 id (required) - The ID or code name of a project
                 ref_name (optional) - The name of a repository branch or tag
         '''
-        res = self.call('projects/%s/repository/commits' % id)
+        res = self.call('projects/%s/repository/commits' % project_id)
         return res
 
-    def get_raw_blob_content(self, id, sha, filepath):
+    def get_raw_blob_content(self, project_id, sha, filepath):
         '''
             Get the raw file contents for a file. 
             api: GET /projects/:id/repository/commits/:sha/blob
@@ -116,7 +116,7 @@ class GitLabApi(object):
                 sha (required) - The commit or branch name
                 filepath (required) - The path the file
         '''
-        res = self.call('projects/%s/repository/commits/%s/blob' % (id, sha))
+        res = self.call('projects/%s/repository/commits/%s/blob' % (project_id, sha))
         return res
 
     # NOTE : users related apis #
@@ -135,13 +135,13 @@ class GitLabApi(object):
         '''
         res = self.call('users')
 
-    def get_single_user(self, id):
+    def get_single_user(self, uid):
         ''' 
             Get a single user
             api: GET /users/:id 
             parameters: id (required) - The ID of a user
         '''
-        res = self.call('users/%s' % id)
+        res = self.call('users/%s' % uid)
         return res
 
     @raiseExceptionOn40X
