@@ -1,9 +1,7 @@
-ircbot
-======
+## ircbot
 ircbot co-work with gitlab
 
-Requirements
-======
+## Requirements
 Jinja2==2.6
 Pygments==1.5
 Sphinx==1.1.3
