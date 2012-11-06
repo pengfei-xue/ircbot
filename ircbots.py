@@ -210,7 +210,7 @@ class IRCBot(object):
 
         self.serve(sender, msg.strip())
 
-    def register_order(self, order):
+    def _register_single_order(self, order):
         '''
             order should be a tuple, and values are: 
             (re object, handler, help_txt)
@@ -233,6 +233,10 @@ class IRCBot(object):
 
         else:
             raise Exception('Your order seems invalid')
+
+    def register_order(self, orders):
+        for order in orders:
+            self._register_single_order(order)
 
     def _validate_order(self, order):
         res = [x[0] for x in self._valid_orders]

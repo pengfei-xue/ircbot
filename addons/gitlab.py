@@ -56,6 +56,11 @@ class GitLabApi(object):
         res = self.call('projects/%s' % project_id)
         return res
 
+    def get_project_name_by_pid(self, project_id):
+        project = self.get_single_project(project_id)
+
+        return project.json['name']
+
     def get_project_members(self, project_id):
         '''
             Get a list of project team members.
@@ -96,7 +101,7 @@ class GitLabApi(object):
         res = self.call('projects/%s/repository/tags' % project_id)
         return res
 
-    def get_project_commits(self, project_id, ref_name):
+    def get_project_commits(self, project_id, ref_name=None):
         '''
             Get a list of repository commits in a project.
             api: GET /projects/:id/repository/commits
