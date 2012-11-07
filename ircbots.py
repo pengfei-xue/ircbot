@@ -141,8 +141,9 @@ class IRCBot(object):
     def join_channel(self, channel):
         if not channel.startswith('#'):
             channel = '#%s' % channel
-            self.channel = channel
         
+        self.channel = channel
+
         self.logger.debug('joining %s' % channel)
         self.send('JOIN %s' % channel)
 
@@ -196,19 +197,34 @@ class IRCBot(object):
     def irc_PRIVMSG(self, prefix, params):
         # handle msg like the following:
         # :xpen!~xpen@10.0.0.1 PRIVMSG bot :git project
+        # ('xpen!~xpen@10.0.0.1', 'PRIVMSG', ['bot', 'bot: hi'])
+        # ('xpen!~xpen@10.0.0.1', 'PRIVMSG', ['bot', 'hi'])
+
+        # in channel: bot: hi
         # :xpen!~xpen@10.0.0.1 PRIVMSG #channel :bot: hi
         # ('xpen!~xpen@10.0.0.1', 'PRIVMSG', ['#channel', 'bot: hi'])
+
+        # in channel: xxx
+        # :xpen!~xpen@10.0.0.1 PRIVMSG #channel :xxx
+        # ('xpen!~xpen@10.0.0.1', 'PRIVMSG', ['#channel', 'xxx'])
+
         # NOTE: always send message as private msg to the person who emits this
         # check this message is send to me
-        receiver, msg = params[-1].split(':', 1)
-        sender = prefix.split('!', 1)[0]
+        channel, msg = params
 
-        if receiver != self.nick:
-            self.logger.error('receiver is not me')
-            self.send('PRIVMSG %s :%s' % (sender, "Hey, I'm not your lover"))
+        if channel != self.channel and channel != self.nick:
+            self.logger.info('Peeping Tom is here')
+            self.send('PRIVMSG %s :%s' % (sender, "Hey, Leave me alone!"))
             return
 
-        self.serve(sender, msg.strip())
+        # don't interupt normal communication(talking in the channel)
+        if re.match('%s:'%self.nick, msg):
+            me, msg = msg.split(':', 1)
+            sender = prefix.split('!', 1)[0]
+            
+            # echo in channel
+            is_in_channel = channel == self.channel
+            self.serve(sender, msg.strip(), is_in_channel)
 
     def _register_single_order(self, order):
         '''
@@ -253,7 +269,9 @@ class IRCBot(object):
 
     # always send private msg to the person who asks for 
     # it even get this from channel
-    def serve(self, sender, order):
+    # if get message from channel, give a feedback as 
+    # 'message has been send privately!'
+    def serve(self, sender, order, is_in_channle=False):
         self.logger.info('In: sender=>[%s],  order=>[%s]' %(sender, order))
         # only registered orders allowed
         if not self._validate_order(order):
@@ -281,3 +299,6 @@ class IRCBot(object):
 
         for result in response:
             self.send('PRIVMSG %s :%s' % (sender, result))
+
+        if is_in_channle:
+            self.send('PRIVMSG %s :%s' %(self.channel, 'Message has been send privately!'))

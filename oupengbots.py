@@ -17,6 +17,7 @@ class OupengBot(IRCBot):
         self.register_order([
             (re.compile(r'^\s*git projects\s*$'), self.get_gitlab_projects, 
             'Get all git projects: git projects'),
+
             (re.compile(r'^\s*project\s(?P<project_id>.*?)\scommit'), self.get_project_commit,
             'Get project\'s latest commit by project id: project 123 commit'),
         ])
