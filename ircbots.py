@@ -238,8 +238,8 @@ class IRCBot(object):
             raise Exception('Order already defined')
 
         help_text = order[2]
-        if help_text == '' or help_text is None or \
-            not isinstance(help_text, str):
+        if (help_text == '' or help_text is None or
+            not isinstance(help_text, str)):
             raise Exception('Help text required')
 
         handler = order[1]
