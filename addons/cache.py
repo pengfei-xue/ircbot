@@ -8,6 +8,9 @@ class Cacher(object):
         self.expired = expired
 
     def get(self, key):
+        if key not in self._cached_data:
+            return None
+
         now = time.time()
         old_ts = self._cached_data[key]['timestamp']
 
