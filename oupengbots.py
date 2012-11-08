@@ -22,7 +22,7 @@ class OupengBot(IRCBot):
             'Get project\'s latest commit by project id: project 123 commit'),
         ])
 
-        self.cache = cache.Cacher()
+        self.cache = cache.Cacher(60)
         self.init_projects_commits_cache()
 
     def get_gitlab_projects(self, raw=False):
@@ -40,10 +40,15 @@ class OupengBot(IRCBot):
         return msg
 
     def get_project_commit(self, project_id):
-        commits = self.gitlab_api.get_project_commits(project_id)
-        latest_commit = commits.json[0]
-        self.cache.set(project_id, commits.json[0])
+        project_id = int(project_id)
+        latest_commit = cached_data = self.cache.get(project_id)
 
+        if not cached_data:
+            commits = self.gitlab_api.get_project_commits(project_id)
+            latest_commit = commits.json[0]
+            self.cache.set(project_id, latest_commit)
+
+        # TODO cache this
         project_name = self.gitlab_api.get_project_name_by_pid(project_id)
 
         msg = 'project: %s, commiter: %s, message: %s' % (
